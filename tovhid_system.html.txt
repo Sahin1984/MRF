@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎓 Tovhid Dərsi - Menu İdarəli Davamiyyət Sistemi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3 {
+            color: #1e3c72;
+        }
+        .menu-button {
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            margin: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 200px;
+            transition: transform 0.2s;
+        }
+        .menu-button:hover {
+            transform: scale(1.05);
+        }
+        .section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        #main-menu {
+            display: block;
+        }
+        .back-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .checkbox-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .checkbox-item {
+            width: 33%;
+            padding: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #1e3c72;
+            color: white;
+        }
+        .status-green { color: green; }
+        .status-orange { color: orange; }
+        .status-red { color: red; }
+        canvas {
+            max-width: 100%;
+        }
+        #system-status {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Tovhid Dərsi - Menu İdarəli Davamiyyət Sistemi</h1>
+        <p>İnteraktiv menu sistemi - istədiyiniz əməliyyatı seçin. Bütün məlumatlar brauzerin yaddaşı (localStorage) ilə saxlanılır. Backup və restore funksiyaları mövcuddur.</p>
+        <hr>
+
+        <div id="system-status"></div>
+
+        <div id="main-menu" class="section">
+            <h2>📋 Əsas Menu</h2>
+            <button class="menu-button" onclick="showSection('add-class')">📅 Dərs Əlavə Et</button>
+            <button class="menu-button" onclick="showSection('view-status')">📊 Vəziyyət Yoxla</button>
+            <button class="menu-button" onclick="showSection('dashboard')">📈 Dashboard</button>
+            <button class="menu-button" onclick="showSection('individual-report')">👤 Fərdi Hesabat</button>
+            <button class="menu-button" onclick="exportToExcel()">💾 Power BI Export (Excel Yüklə)</button>
+            <button class="menu-button" onclick="showSection('settings')">⚙️ Parametrlər</button>
+            <button class="menu-button" onclick="showSection('help')">❓ Kömək</button>
+            <button class="menu-button" onclick="showSection('reset-system')">🔄 Sistemi Sıfırla</button>
+            <button class="menu-button" onclick="backupData()">💾 Backup Yarat (JSON Yüklə)</button>
+            <button class="menu-button" onclick="document.getElementById('restore-file').click()">🔄 Backup Yüklə (Restore)</button>
+            <input type="file" id="restore-file" style="display:none" onchange="restoreData(event)">
+        </div>
+
+        <div id="add-class" class="section">
+            <h2>📅 Yeni Dərs Əlavə Et</h2>
+            <label>Dərs Tarixi: <input type="date" id="class-date" value=""></label><br><br>
+            <label>Qeyd: <input type="text" id="class-notes" placeholder="Dərs qeydi (məcburi deyil)"></label><br><br>
+            <h3>👥 Gələn Tələbələri Seçin:</h3>
+            <div id="checkboxes" class="checkbox-container"></div>
+            <button onclick="selectAll()">☑️ Hamısını Seç</button>
+            <button onclick="clearAll()">☐ Hamısını Təmizlə</button>
+            <button onclick="addClass()">✅ Dərsi Qeyd Et</button>
+            <button class="back-button" onclick="backToMain()">🏠 Ana Menu</button>
+        </div>
+
+        <div id="view-status" class="section">
+            <h2>📊 Sistem Vəziyyət Yoxlaması</h2>
+            <div id="status-content"></div>
+            <button class="back-button" onclick="backToMain()">🏠 Ana Menu</button>
+        </div>
+
+        <div id="dashboard" class="section">
+            <h2>📈 Dashboard</h2>
+            <canvas id="attendance-chart"></canvas>
+            <canvas id="status-pie"></canvas>
+            <canvas id="risk-bar"></canvas>
+            <div id="stats-text"></div>
+            <button class="back-button" onclick="backToMain()">🏠 Ana Menu</button>
+        </div>
+
+        <div id="individual-report" class="section">
+            <h2>👤 Fərdi Hesabat</h2>
+            <label>Tələbə Seçin: <select id="student-select"></select></label>
+            <button onclick="showIndividualReport()">📊 Hesabat Al</button>
+            <div id="report-content"></div>
+            <button class="back-button" onclick="backToMain()">🏠 Ana Menu</button>
+        </div>
+
+        <div id="settings" class="section">
+            <h2>⚙️ Parametrlər</h2>
+            <p>Cari parametrlər: Davamiyyət hədəfi 80%, Risk həddi 50%.</p>
+            <p>Sistem məlumatları: Brauzer yaddaşı istifadə olunur.</p>
+            <button onclick="backupData()">💾 Backup Yarat</button>
+            <button class="back-button" onclick="backToMain()">🏠 Ana Menu</button>
+        </div>
+
+        <div id="help" class="section">
+            <h2>❓ Kömək</h2>
+            <p>Sistem haqqında detallı məlumat: Bu sistem davamiyyəti izləyir. Məlumatlar localStorage-də saxlanır. Backup ilə məlumatları saxlayın və restore edin.</p>
+            <button class="back-button" onclick="backToMain()">🏠 Ana Menu</button>
+        </div>
+
+        <div id="reset-system" class="section">
+            <h2>🔄 Sistemi Sıfırla</h2>
+            <p>⚠️ Bütün məlumatlar silinəcək! Təsdiq üçün 'RESET' yazın:</p>
+            <input type="text" id="reset-confirm">
+            <button onclick="resetSystem()">🔄 Təsdiq et</button>
+            <button class="back-button" onclick="backToMain()">❌ Ləğv et</button>
+        </div>
+    </div>
+
+    <script>
+        const STUDENTS_LIST = [
+            'Aydın Arslan', 'Ata Həsənov', 'Əmin Fətəliyev', 'Elvin Mahdi', 'Fikrət Talıbov', 'Famid Əliyev', 
+            'Xəqani Həmzəyev', 'İsmayıl Qasımov', 'Mürtəza Heydərov', 'Polad Əsgərov', 'Şəmsi Ağazadə', 'Tərlan Qədimov', 'Emil Mirzəyev'
+        ];
+
+        let systemData = loadData() || initializeData();
+
+        function initializeData() {
+            const currentDate = new Date().toISOString().split('T')[0];
+            const data = STUDENTS_LIST.map(student => ({
+                Student_Name: student,
+                Classes_Attended: 0,
+                Total_Classes: 0,
+                Attendance_Percentage: 0.0,
+                Tests_Taken: 0,
+                Tests_Passed: 0,
+                Test_Success_Rate: 0.0,
+                Status: 'Yeni',
+                Status_Color: 'Blue',
+                Risk_Level: 'Bilinmir',
+                Grade: 'N/A',
+                Registration_Date: currentDate,
+                Last_Update: new Date().toLocaleString(),
+                Academic_Year: new Date().getFullYear(),
+                Target_Difference: -80.0,
+                Needs_Attention: 0,
+                Attendance_History: [],
+                Notes: 'System initialized'
+            }));
+            saveData(data);
+            return data;
+        }
+
+        function saveData(data) {
+            localStorage.setItem('tovhidSystemData', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const stored = localStorage.getItem('tovhidSystemData');
+            return stored ? JSON.parse(stored) : null;
+        }
+
+        function updateSystemStatus() {
+            const totalClasses = systemData[0].Total_Classes;
+            const avgAttendance = systemData.reduce((sum, s) => sum + s.Attendance_Percentage, 0) / systemData.length;
+            const highPerformers = systemData.filter(s => s.Attendance_Percentage >= 80).length;
+            const needsAttention = systemData.filter(s => s.Needs_Attention === 1).length;
+            const lastUpdate = systemData[0].Last_Update;
+
+            document.getElementById('system-status').innerHTML = `
+                📊 SİSTEM STATUSU:<br>
+                ├─ 👥 Tələbə sayı: ${systemData.length}<br>
+                ├─ 📚 Keçirilən dərs: ${totalClasses}<br>
+                ├─ 📈 Ortalama davamiyyət: ${avgAttendance.toFixed(1)}%<br>
+                ├─ 🟢 Yüksək performans: ${highPerformers} tələbə<br>
+                ├─ 🔴 Diqqət tələb edir: ${needsAttention} tələbə<br>
+                └─ ⏰ Son yeniləmə: ${lastUpdate}
+            `;
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+            if (sectionId === 'add-class') renderCheckboxes();
+            if (sectionId === 'view-status') renderStatus();
+            if (sectionId === 'dashboard') renderDashboard();
+            if (sectionId === 'individual-report') renderStudentSelect();
+        }
+
+        function backToMain() {
+            showSection('main-menu');
+            updateSystemStatus();
+        }
+
+        function renderCheckboxes() {
+            const container = document.getElementById('checkboxes');
+            container.innerHTML = '';
+            STUDENTS_LIST.forEach(student => {
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+                div.innerHTML = `<input type="checkbox" id="cb-${student}" value="${student}"> <label for="cb-${student}">${student}</label>`;
+                container.appendChild(div);
+            });
+            document.getElementById('class-date').value = new Date().toISOString().split('T')[0];
+        }
+
+        function selectAll() {
+            document.querySelectorAll('#checkboxes input').forEach(cb => cb.checked = true);
+        }
+
+        function clearAll() {
+            document.querySelectorAll('#checkboxes input').forEach(cb => cb.checked = false);
+        }
+
+        function addClass() {
+            const presentStudents = Array.from(document.querySelectorAll('#checkboxes input:checked')).map(cb => cb.value);
+            const notes = document.getElementById('class-notes').value;
+            const classDate = document.getElementById('class-date').value;
+
+            if (presentStudents.length === 0) {
+                alert('⚠️ Heç bir tələbə seçilməyib!');
+                return;
+            }
+
+            const newTotal = systemData[0].Total_Classes + 1;
+
+            systemData.forEach(student => {
+                const wasPresent = presentStudents.includes(student.Student_Name);
+                student.Classes_Attended += wasPresent ? 1 : 0;
+                student.Total_Classes = newTotal;
+                student.Attendance_Percentage = ((student.Classes_Attended / newTotal) * 100).toFixed(1);
+
+                if (wasPresent) {
+                    student.Tests_Taken += 1;
+                    student.Tests_Passed += 1;
+                }
+                student.Test_Success_Rate = student.Tests_Taken > 0 ? ((student.Tests_Passed / student.Tests_Taken) * 100).toFixed(1) : 0;
+
+                let percentage = parseFloat(student.Attendance_Percentage);
+                if (percentage >= 80) {
+                    student.Status = 'Əla'; student.Status_Color = 'Green'; student.Risk_Level = 'Aşağı';
+                } else if (percentage >= 60) {
+                    student.Status = 'Yaxşı'; student.Status_Color = 'LightGreen'; student.Risk_Level = 'Aşağı';
+                } else if (percentage >= 40) {
+                    student.Status = 'Orta'; student.Status_Color = 'Orange'; student.Risk_Level = 'Orta';
+                } else {
+                    student.Status = 'Zəif'; student.Status_Color = 'Red'; student.Risk_Level = 'Yüksək';
+                }
+
+                let testRate = parseFloat(student.Test_Success_Rate);
+                if (testRate >= 90) student.Grade = 'A';
+                else if (testRate >= 80) student.Grade = 'B';
+                else if (testRate >= 70) student.Grade = 'C';
+                else if (testRate >= 60) student.Grade = 'D';
+                else student.Grade = 'F';
+
+                student.Attendance_History.push({
+                    date: classDate,
+                    present: wasPresent,
+                    class_number: newTotal
+                });
+
+                student.Target_Difference = (percentage - 80).toFixed(1);
+                student.Needs_Attention = percentage < 50 ? 1 : 0;
+                student.Last_Update = new Date().toLocaleString();
+                if (notes) student.Notes = notes;
+            });
+
+            saveData(systemData);
+            alert(`✅ ${classDate} dərsi qeyd edildi! Gələn: ${presentStudents.length}/${STUDENTS_LIST.length}`);
+            backToMain();
+        }
+
+        function renderStatus() {
+            const content = document.getElementById('status-content');
+            content.innerHTML = '';
+
+            if (systemData[0].Total_Classes === 0) {
+                content.innerHTML = '⚠️ Hələ dərs keçirilməyib!';
+                return;
+            }
+
+            const totalClasses = systemData[0].Total_Classes;
+            const avgAttendance = (systemData.reduce((sum, s) => sum + parseFloat(s.Attendance_Percentage), 0) / systemData.length).toFixed(1);
+            const statusCounts = {};
+            systemData.forEach(s => statusCounts[s.Status] = (statusCounts[s.Status] || 0) + 1);
+            const highRisk = systemData.filter(s => s.Risk_Level === 'Yüksək').length;
+            const mediumRisk = systemData.filter(s => s.Risk_Level === 'Orta').length;
+
+            let html = `
+                📚 Keçirilən dərs sayı: ${totalClasses}<br>
+                📈 Ortalama davamiyyət: ${avgAttendance}%<br>
+                📅 Son yeniləmə: ${systemData[0].Last_Update}<br><br>
+                📊 STATUS BÖLGÜSÜ:<br>
+            `;
+            for (let status in statusCounts) {
+                const perc = ((statusCounts[status] / systemData.length) * 100).toFixed(1);
+                html += `   ${status}: ${statusCounts[status]} tələbə (${perc}%)<br>`;
+            }
+            html += `<br>⚠️ RİSK TƏHLİLİ:<br>
+                🔴 Yüksək risk: ${highRisk} tələbə<br>
+                🟡 Orta risk: ${mediumRisk} tələbə<br>`;
+
+            const highRiskStudents = systemData.filter(s => s.Risk_Level === 'Yüksək');
+            if (highRiskStudents.length > 0) {
+                html += `<br>🚨 Yüksək risk altındakı tələbələr:<br>`;
+                highRiskStudents.forEach(s => html += `   • ${s.Student_Name}: ${s.Attendance_Percentage}%<br>`);
+            }
+
+            const topStudents = systemData.slice().sort((a,b) => b.Attendance_Percentage - a.Attendance_Percentage).slice(0,3);
+            html += `<br>🏆 EN YAXŞI 3 TƏLƏBƏ:<br>`;
+            topStudents.forEach((s, i) => html += `   ${i+1}. ${s.Student_Name}: ${s.Attendance_Percentage}%<br>`);
+
+            html += `<br>📋 DETALLI CƏDVƏL:<br><table><tr><th>Tələbə</th><th>Gəldi</th><th>Ümumi</th><th>Faiz%</th><th>Status</th><th>Risk</th></tr>`;
+            systemData.forEach(s => {
+                const statusClass = s.Status_Color.toLowerCase() === 'green' ? 'status-green' : s.Status_Color.toLowerCase() === 'orange' ? 'status-orange' : 'status-red';
+                html += `<tr><td>${s.Student_Name}</td><td>${s.Classes_Attended}</td><td>${s.Total_Classes}</td><td>${s.Attendance_Percentage}</td><td class="${statusClass}">${s.Status}</td><td>${s.Risk_Level}</td></tr>`;
+            });
+            html += `</table>`;
+
+            content.innerHTML = html;
+        }
+
+        function renderDashboard() {
+            if (systemData[0].Total_Classes === 0) {
+                document.getElementById('stats-text').innerHTML = '⚠️ Dashboard üçün ən azı 1 dərs lazımdır!';
+                return;
+            }
+
+            // Attendance Bar Chart
+            const ctx1 = document.getElementById('attendance-chart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: systemData.map(s => s.Student_Name),
+                    datasets: [{
+                        label: 'Davamiyyət %',
+                        data: systemData.map(s => s.Attendance_Percentage),
+                        backgroundColor: systemData.map(s => parseFloat(s.Attendance_Percentage) < 40 ? 'red' : parseFloat(s.Attendance_Percentage) < 60 ? 'orange' : parseFloat(s.Attendance_Percentage) < 80 ? 'lightgreen' : 'green')
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Status Pie Chart
+            const statusCounts = {};
+            systemData.forEach(s => statusCounts[s.Status] = (statusCounts[s.Status] || 0) + 1);
+            const ctx2 = document.getElementById('status-pie').getContext('2d');
+            new Chart(ctx2, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(statusCounts),
+                    datasets: [{
+                        data: Object.values(statusCounts),
+                        backgroundColor: ['green', 'lightgreen', 'orange', 'red', 'blue']
+                    }]
+                }
+            });
+
+            // Risk Bar Chart
+            const riskCounts = {};
+            systemData.forEach(s => riskCounts[s.Risk_Level] = (riskCounts[s.Risk_Level] || 0) + 1);
+            const ctx3 = document.getElementById('risk-bar').getContext('2d');
+            new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(riskCounts),
+                    datasets: [{
+                        label: 'Tələbə Sayı',
+                        data: Object.values(riskCounts),
+                        backgroundColor: ['green', 'orange', 'red']
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+
+            // Stats Text
+            const avg = (systemData.reduce((sum, s) => sum + parseFloat(s.Attendance_Percentage), 0) / systemData.length).toFixed(1);
+            const max = Math.max(...systemData.map(s => parseFloat(s.Attendance_Percentage)));
+            const min = Math.min(...systemData.map(s => parseFloat(s.Attendance_Percentage)));
+            const targetReached = systemData.filter(s => parseFloat(s.Attendance_Percentage) >= 80).length;
+            const riskUnder = systemData.filter(s => s.Needs_Attention === 1).length;
+            const belowAvg = systemData.filter(s => parseFloat(s.Attendance_Percentage) < avg).length;
+
+            document.getElementById('stats-text').innerHTML = `
+                📊 CANLІ STATİSTİKA<br>
+                ━━━━━━━━━━━━━━━━━━━━<br>
+                👥 Ümumi tələbə: ${systemData.length}<br>
+                📚 Keçirilən dərs: ${systemData[0].Total_Classes}<br>
+                📈 Ortalama davamiyyət: ${avg}%<br><br>
+                🏆 BÖYÜK RƏQƏMLƏR:<br>
+                • Ən yüksək: ${max}%<br>
+                • Ən aşağı: ${min}%<br>
+                • Hədəfə çatan: ${targetReached}<br><br>
+                ⚠️ DIQQƏT:<br>
+                • Risk altında: ${riskUnder}<br>
+                • Ortalamadan aşağı: ${belowAvg}<br><br>
+                ⏰ Son yeniləmə: ${new Date().toLocaleTimeString()}
+            `;
+        }
+
+        function renderStudentSelect() {
+            const select = document.getElementById('student-select');
+            select.innerHTML = '';
+            STUDENTS_LIST.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student;
+                option.textContent = student;
+                select.appendChild(option);
+            });
+        }
+
+        function showIndividualReport() {
+            const selected = document.getElementById('student-select').value;
+            const student = systemData.find(s => s.Student_Name === selected);
+            let html = `
+                👤 ${selected} - Fərdi Hesabat<br>
+                ══════════════════════════════<br>
+                📊 Davamiyyət məlumatları:<br>
+                   • Gəldiyi dərs: ${student.Classes_Attended}<br>
+                   • Ümumi dərs: ${student.Total_Classes}<br>
+                   • Davamiyyət faizi: ${student.Attendance_Percentage}%<br>
+                   • Status: ${student.Status}<br>
+                   • Risk səviyyəsi: ${student.Risk_Level}<br><br>
+                📝 Test məlumatları:<br>
+                   • Test sayı: ${student.Tests_Taken}<br>
+                   • Müsbət test: ${student.Tests_Passed}<br>
+                   • Test müvəffəqiyyəti: ${student.Test_Success_Rate}%<br>
+                   • Qiymət: ${student.Grade}<br><br>
+                🎯 Hədəf analizi:<br>
+            `;
+            const diff = parseFloat(student.Target_Difference);
+            html += diff >= 0 ? `   ✅ Hədəfi ${diff}% üstələyib<br>` : `   ⚠️ Hədəfə ${Math.abs(diff)}% çatmır<br>`;
+            html += `<br>📅 Sistem məlumatları:<br>
+                   • Qeydiyyat tarixi: ${student.Registration_Date}<br>
+                   • Son yeniləmə: ${student.Last_Update}<br>
+                   • Qeydlər: ${student.Notes}<br><br>
+                📚 Davamiyyət tarixçəsi (son 5):<br>
+            `;
+            student.Attendance_History.slice(-5).forEach(rec => {
+                const status = rec.present ? '✅ Gəldi' : '❌ Gəlmədi';
+                html += `   • Dərs ${rec.class_number} (${rec.date}): ${status}<br>`;
+            });
+
+            document.getElementById('report-content').innerHTML = html;
+        }
+
+        function exportToExcel() {
+            const ws = XLSX.utils.json_to_sheet(systemData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'TovhidData');
+            XLSX.writeFile(wb, `tovhid_attendance_system_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        function backupData() {
+            const blob = new Blob([JSON.stringify(systemData)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tovhid_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        function restoreData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                systemData = JSON.parse(e.target.result);
+                saveData(systemData);
+                alert('✅ Backup yükləndi! Sistem yeniləndi.');
+                backToMain();
+            };
+            reader.readAsText(file);
+        }
+
+        function resetSystem() {
+            if (document.getElementById('reset-confirm').value.toUpperCase() === 'RESET') {
+                backupData(); // Avtomatik backup
+                systemData = initializeData();
+                alert('✅ Sistem sıfırlandı! Backup yaradıldı.');
+                backToMain();
+            } else {
+                alert('❌ Təsdiq kodu yanlışdır!');
+            }
+        }
+
+        // Initial load
+        updateSystemStatus();
+        showSection('main-menu');
+    </script>
+</body>
+</html>
